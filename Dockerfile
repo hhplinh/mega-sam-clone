@@ -5,7 +5,8 @@
 ## https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/
 
 # Use the base image with PyTorch and CUDA support
-FROM pytorch/pytorch:2.7.0-cuda12.6-cudnn9-devel
+# FROM pytorch/pytorch:2.7.0-cuda12.6-cudnn9-devel
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
 # NOTE:
 # Building the libraries for this repository requires cuda *DURING BUILD PHASE*, therefore:
@@ -15,6 +16,16 @@ FROM pytorch/pytorch:2.7.0-cuda12.6-cudnn9-devel
 ENV DEBIAN_FRONTEND=noninteractive
 ARG TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6"
 
+RUN apt-get update && \
+    apt-get install -y wget
+
+# Install miniconda
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-1-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh && \
+    echo "export PATH=/opt/conda/bin:$PATH" > /etc/profile.d/conda.sh
+ENV PATH /opt/conda/bin:$PATH
+
 
 COPY  environment.yml /tmp/environment.yml
 WORKDIR /tmp/
@@ -22,12 +33,26 @@ WORKDIR /tmp/
 RUN conda env create -f environment.yml && \
     conda init bash && exec bash
 
-RUN conda run -n mega_sam python -m pip install -U xformers --index-url https://download.pytorch.org/whl/cu126
+# Install torch afterwards
+RUN conda run -n mega_sam pip install torch==2.0.1+cu118 torchvision==0.15.2 -f https://download.pytorch.org/whl/torch_stable.html
+
+# installing torch scatter afterwards
+RUN conda run -n mega_sam python -m pip install --no-cache-dir \
+  torch-scatter==2.1.2 \
+  -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+
+
+RUN wget https://anaconda.org/xformers/xformers/0.0.22.post7/download/linux-64/xformers-0.0.22.post7-py310_cu11.8.0_pyt2.0.1.tar.bz2
+RUN conda install -n mega_sam xformers-0.0.22.post7-py310_cu11.8.0_pyt2.0.1.tar.bz2
+
 
 COPY base /tmp/base/
 WORKDIR /tmp/base/
 
-# RUN conda run -n mega_sam python setup.py install
+# g++ for installing afterwards
+RUN apt-get update && apt-get install -y build-essential
+
+RUN conda run -n mega_sam python setup.py install
 
 WORKDIR /mega_sam
 
