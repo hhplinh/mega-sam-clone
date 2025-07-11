@@ -3,7 +3,6 @@ import glob
 import os
 import shutil
 import subprocess
-import cv2
 from pathlib import Path
 
 
@@ -14,15 +13,15 @@ def run_cmd(cmd, cwd):
 
 def extract_frames(video_path, out_dir):
     os.makedirs(out_dir, exist_ok=True)
-    cap = cv2.VideoCapture(video_path)
-    idx = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        cv2.imwrite(os.path.join(out_dir, f"{idx:06d}.jpg"), frame)
-        idx += 1
-    cap.release()
+    cmd = [
+        "ffmpeg",
+        "-i",
+        str(video_path),
+        "-vsync",
+        "0",
+        os.path.join(out_dir, "%06d.jpg"),
+    ]
+    run_cmd(cmd, cwd=os.getcwd())
 
 
 def main():
