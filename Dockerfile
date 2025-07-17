@@ -50,11 +50,13 @@ COPY base /tmp/base/
 WORKDIR /tmp/base/
 
 # g++ for installing afterwards
-RUN apt-get update && apt-get install -y build-essential
+RUN apt-get update && apt-get install -y \
+    build-essential ffmpeg
 
 RUN conda run -n mega_sam python setup.py install
 
 WORKDIR /mega_sam
+ENV PYTHONPATH="/mega_sam/UniDepth:$PYTHONPATH"
 
 # This error occurs because there’s a conflict between the threading layer used
 # by Intel MKL (Math Kernel Library) and the libgomp library, 

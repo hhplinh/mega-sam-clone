@@ -38,7 +38,7 @@ def main():
     scene_name = Path(video_path).stem
 
     frames_dir = source_path / 'frames' / scene_name
-    extract_frames(video_path, frames_dir)
+    # extract_frames(video_path, frames_dir)
 
     depth_out = source_path / 'mono_depth' / scene_name
     run_cmd([
@@ -63,7 +63,6 @@ def main():
         '--scene_name', scene_name,
         '--mono_depth_path', str(source_path / 'mono_depth'),
         '--metric_depth_path', str(source_path / 'unidepth'),
-        '--disable_vis'
     ], cwd=root_dir)
 
     run_cmd([
