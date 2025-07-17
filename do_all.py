@@ -27,6 +27,8 @@ def extract_frames(video_path, out_dir):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--source_path', '-s', required=True, type=str)
+    parser.add_argument('--clean', '-c', action='store_true',
+                        help='clean generated data and rerun all steps')
     args = parser.parse_args()
 
     root_dir = Path(__file__).resolve().parent
@@ -38,48 +40,80 @@ def main():
     scene_name = Path(video_path).stem
 
     frames_dir = source_path / 'frames' / scene_name
-    # extract_frames(video_path, frames_dir)
+    if args.clean and frames_dir.exists():
+        shutil.rmtree(frames_dir)
+
+    if not frames_dir.exists():
+        extract_frames(video_path, frames_dir)
 
     depth_out = source_path / 'mono_depth' / scene_name
-    run_cmd([
-        'python', 'Depth-Anything/run_videos.py',
-        '--encoder', 'vitl',
-        '--load-from', 'Depth-Anything/checkpoints/depth_anything_vitl14.pth',
-        '--img-path', str(frames_dir),
-        '--outdir', str(depth_out)
-    ], cwd=root_dir)
+    if args.clean and depth_out.exists():
+        shutil.rmtree(depth_out)
 
-    run_cmd([
-        'python', 'UniDepth/scripts/demo_mega-sam.py',
-        '--scene-name', scene_name,
-        '--img-path', str(frames_dir),
-        '--outdir', str(source_path / 'unidepth')
-    ], cwd=root_dir)
+    if not depth_out.exists():
+        run_cmd([
+            'python', 'Depth-Anything/run_videos.py',
+            '--encoder', 'vitl',
+            '--load-from', 'Depth-Anything/checkpoints/depth_anything_vitl14.pth',
+            '--img-path', str(frames_dir),
+            '--outdir', str(depth_out)
+        ], cwd=root_dir)
 
-    run_cmd([
-        'python', 'camera_tracking_scripts/test_demo.py',
-        '--datapath', str(frames_dir),
-        '--weights', 'checkpoints/megasam_final.pth',
-        '--scene_name', scene_name,
-        '--mono_depth_path', str(source_path / 'mono_depth'),
-        '--metric_depth_path', str(source_path / 'unidepth'),
-    ], cwd=root_dir)
+    unidepth_out = source_path / 'unidepth' / scene_name
+    if args.clean and unidepth_out.exists():
+        shutil.rmtree(unidepth_out)
 
-    run_cmd([
-        'python', 'cvd_opt/preprocess_flow.py',
-        '--datapath', str(frames_dir),
-        '--model', 'cvd_opt/raft-things.pth',
-        '--scene_name', scene_name,
-        '--mixed_precision'
-    ], cwd=root_dir)
+    if not unidepth_out.exists():
+        run_cmd([
+            'python', 'UniDepth/scripts/demo_mega-sam.py',
+            '--scene-name', scene_name,
+            '--img-path', str(frames_dir),
+            '--outdir', str(source_path / 'unidepth')
+        ], cwd=root_dir)
 
-    run_cmd([
-        'python', 'cvd_opt/cvd_opt.py',
-        '--scene_name', scene_name,
-        '--w_grad', '2.0',
-        '--w_normal', '5.0',
-        '--output_dir', str(source_path / 'cvd_output')
-    ], cwd=root_dir)
+    recon_dir = source_path / 'reconstructions' / scene_name
+    if args.clean and recon_dir.exists():
+        shutil.rmtree(recon_dir)
+
+    droid_out = source_path / 'outputs' / f'{scene_name}_droid.npz'
+    if args.clean and droid_out.exists():
+        droid_out.unlink()
+
+    if not recon_dir.exists() or not droid_out.exists():
+        run_cmd([
+            'python', 'camera_tracking_scripts/test_demo.py',
+            '--datapath', str(frames_dir),
+            '--weights', 'checkpoints/megasam_final.pth',
+            '--scene_name', scene_name,
+            '--mono_depth_path', str(source_path / 'mono_depth'),
+            '--metric_depth_path', str(source_path / 'unidepth'),
+        ], cwd=root_dir)
+
+    cache_dir = source_path / 'cache_flow' / scene_name
+    if args.clean and cache_dir.exists():
+        shutil.rmtree(cache_dir)
+
+    if not cache_dir.exists():
+        run_cmd([
+            'python', 'cvd_opt/preprocess_flow.py',
+            '--datapath', str(frames_dir),
+            '--model', 'cvd_opt/raft-things.pth',
+            '--scene_name', scene_name,
+            '--mixed_precision'
+        ], cwd=root_dir)
+
+    cvd_npz = source_path / 'outputs_cvd' / f'{scene_name}_sgd_cvd_hr.npz'
+    if args.clean and cvd_npz.exists():
+        cvd_npz.unlink()
+
+    if not cvd_npz.exists():
+        run_cmd([
+            'python', 'cvd_opt/cvd_opt.py',
+            '--scene_name', scene_name,
+            '--w_grad', '2.0',
+            '--w_normal', '5.0',
+            '--output_dir', str(source_path / 'cvd_output')
+        ], cwd=root_dir)
 
     # Move generated folders to source_path
     recon_src = root_dir / 'reconstructions' / scene_name
