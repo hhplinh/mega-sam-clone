@@ -139,6 +139,18 @@ def main():
         dst = source_path / 'outputs_cvd'
         dst.mkdir(parents=True, exist_ok=True)
         shutil.move(str(cvd_file), dst / cvd_file.name)
+        npz_for_colmap = dst / cvd_file.name
+    else:
+        npz_for_colmap = source_path / 'outputs' / f'{scene_name}_droid.npz'
+
+    # Export final results to COLMAP format
+    colmap_out = source_path / 'colmap' / scene_name
+    run_cmd([
+        'python', 'export_to_colmap.py',
+        '--npz', str(npz_for_colmap),
+        '--frames', str(frames_dir),
+        '--outdir', str(colmap_out)
+    ], cwd=root_dir)
 
 
 if __name__ == '__main__':
