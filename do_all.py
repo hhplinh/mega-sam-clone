@@ -3,7 +3,6 @@ import glob
 import os
 import shutil
 import subprocess
-import cv2
 from pathlib import Path
 
 
@@ -14,15 +13,15 @@ def run_cmd(cmd, cwd):
 
 def extract_frames(video_path, out_dir):
     os.makedirs(out_dir, exist_ok=True)
-    cap = cv2.VideoCapture(video_path)
-    idx = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        cv2.imwrite(os.path.join(out_dir, f"{idx:06d}.jpg"), frame)
-        idx += 1
-    cap.release()
+    cmd = [
+        "ffmpeg",
+        "-i",
+        str(video_path),
+        "-vsync",
+        "0",
+        os.path.join(out_dir, "%06d.jpg"),
+    ]
+    run_cmd(cmd, cwd=os.getcwd())
 
 
 def main():
@@ -39,7 +38,7 @@ def main():
     scene_name = Path(video_path).stem
 
     frames_dir = source_path / 'frames' / scene_name
-    extract_frames(video_path, frames_dir)
+    # extract_frames(video_path, frames_dir)
 
     depth_out = source_path / 'mono_depth' / scene_name
     run_cmd([
@@ -64,7 +63,6 @@ def main():
         '--scene_name', scene_name,
         '--mono_depth_path', str(source_path / 'mono_depth'),
         '--metric_depth_path', str(source_path / 'unidepth'),
-        '--disable_vis'
     ], cwd=root_dir)
 
     run_cmd([
