@@ -15,6 +15,7 @@ dependencies:
   - numpy=1.26.3           # <--- MOVE THIS HERE (Remove from pip section below)
   - mkl=2023.1.0
   - mkl-service=2.4.0
+  - intel-openmp
   - pip:
     - opencv-python-headless==4.9.0.80
     - tqdm==4.67.1
