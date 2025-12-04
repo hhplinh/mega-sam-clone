@@ -115,7 +115,7 @@ def image_stream(
 
 
 def save_full_reconstruction(
-    droid, full_traj, rgb_list, senor_depth_list, motion_prob, scene_name
+    droid, full_traj, rgb_list, senor_depth_list, motion_prob, scene_name, out_dir=""
 ):
   """Save full reconstruction."""
   from pathlib import Path
@@ -125,17 +125,14 @@ def save_full_reconstruction(
 
   poses = full_traj  # .cpu().numpy()
   intrinsics = droid.video.intrinsics[:t].cpu().numpy()
-
-  Path("reconstructions/{}".format(scene_name)).mkdir(
-      parents=True, exist_ok=True
-  )
-  np.save("reconstructions/{}/images.npy".format(scene_name), images)
-  np.save("reconstructions/{}/disps.npy".format(scene_name), disps)
-  np.save("reconstructions/{}/poses.npy".format(scene_name), poses)
-  np.save(
-      "reconstructions/{}/intrinsics.npy".format(scene_name), intrinsics * 8.0
-  )
-  np.save("reconstructions/{}/motion_prob.npy".format(scene_name), motion_prob)
+  
+  out_dir = Path(out_dir) / "reconstructions"
+  out_dir.mkdir(parents=True, exist_ok=True)
+  np.save(out_dir / "images.npy", images)
+  np.save(out_dir / "disps.npy", disps)
+  np.save(out_dir / "poses.npy", poses)
+  np.save(out_dir / "intrinsics.npy", intrinsics * 8.0)
+  np.save(out_dir / "motion_prob.npy", motion_prob)
 
   intrinsics = intrinsics[0] * 8.0
   poses_th = torch.as_tensor(poses, device="cpu")
@@ -151,11 +148,9 @@ def save_full_reconstruction(
   print("disp_data ", disps.shape)
 
   max_frames = min(1000, images.shape[0])
-  print("outputs/%s_droid.npz" % scene_name)
-  Path("outputs").mkdir(parents=True, exist_ok=True)
 
   np.savez(
-      "outputs/%s_droid.npz" % scene_name,
+      out_dir / "droid.npz",
       images=np.uint8(images[:max_frames, ::-1, ...].transpose(0, 2, 3, 1)),
       depths=np.float32(1.0 / disps[:max_frames, ...]),
       intrinsic=K,
@@ -195,10 +190,10 @@ if __name__ == "__main__":
       "--mono_depth_path", default="Depth-Anything/video_visualization"
   )
   parser.add_argument("--metric_depth_path", default="UniDepth/outputs ")
+  parser.add_argument("--outdir", default="outputs/")
   args = parser.parse_args()
 
   print("Running evaluation on {}".format(args.datapath))
-  print(args)
 
   scene_name = args.scene_name.split("/")[-1]
 
@@ -211,15 +206,11 @@ if __name__ == "__main__":
   image_list += sorted(glob.glob(os.path.join("%s" % (args.datapath), "*.jpeg")))
 
   # NOTE Mono is inverse depth, but metric-depth is depth!
-  mono_disp_paths = sorted(
-      glob.glob(
-          os.path.join("%s/%s" % (args.mono_depth_path, scene_name), "*.npy")
-      )
-  )
+  glob_path = os.path.join(args.mono_depth_path, "*.npy")
+  mono_disp_paths = sorted(glob.glob(glob_path))
+  glob_path = os.path.join(args.metric_depth_path, "*.npz")
   metric_depth_paths = sorted(
-      glob.glob(
-          os.path.join("%s/%s" % (args.metric_depth_path, scene_name), "*.npz")
-      )
+        glob.glob(glob_path)
   )
 
   img_0 = cv2.imread(image_list[0])
@@ -313,8 +304,6 @@ if __name__ == "__main__":
           K=K,
       )
   ):
-    # if not args.disable_vis:
-    #   show_image(image[0])
 
     rgb_list.append(image[0])
     senor_depth_list.append(depth)
@@ -350,4 +339,5 @@ if __name__ == "__main__":
         senor_depth_list,
         motion_prob,
         args.scene_name,
+        out_dir=args.outdir,
     )
