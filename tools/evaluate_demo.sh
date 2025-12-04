@@ -14,7 +14,8 @@
 # limitations under the License.
 # ==============================================================================
 
-DATA_PATH=/home/zhengqili/filestore/DAVIS/DAVIS/JPEGImages/480p
+# DATA_PATH=/home/zhengqili/filestore/DAVIS/DAVIS/JPEGImages/480p
+DATA_PATH=/volume/data/DAVIS
 CKPT_PATH=checkpoints/megasam_final.pth
 
 evalset=(

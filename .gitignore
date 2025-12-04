@@ -1,0 +1,15 @@
+cache_flow/
+__pycache__/
+
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+
+Depth-Anything/checkpoints/
+Depth-Anything/video_visualization/
+outputs/
+outputs_cvd/
+reconstructions/
+cvd_opt/*.pth

@@ -20,7 +20,8 @@ evalset=(
   breakdance-flare
 )
 
-DATA_PATH=/home/zhengqili/filestore/DAVIS/DAVIS/JPEGImages/480p
+# DATA_PATH=/home/zhengqili/filestore/DAVIS/DAVIS/JPEGImages/480p
+DATA_PATH=/volume/data/DAVIS
 
 
 # Run Raft Optical Flows
