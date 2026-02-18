@@ -1,3 +1,5 @@
+https://github.com/ludekcizinsky/mega-sam
+
 ## About this repository
 
 This is a modified version of the original [MegaSaM repository](https://github.com/mega-sam/mega-sam). The goal is to let you run MegaSaM on your own videos (from the wild) as easily as possible. In addition, I have made use of [SpatialVid](https://github.com/NJU-3DV/SpatialVID)'s visualisation code to make it easier to visualize the results which is based on another great project [viser](https://viser.studio/main/) - so big thanks to the authors of those two projects. 
