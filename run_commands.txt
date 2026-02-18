@@ -11,11 +11,9 @@ python -m gdown --folder https://drive.google.com/drive/folders/1sWDsfuZ3Up38EUQ
 
 wget https://huggingface.co/spaces/LiheYoung/Depth-Anything/resolve/main/checkpoints/depth_anything_vitl14.pth -O pretrained/depth_anything_vitl14.pth
 
-# add dataset folder then mount again
 
-
-ls -lh Depth-Anything/checkpoints/depth_anything_vitl14.pth
-ls -lh cvd_opt/raft-things.pth
+ls -lh pretrained/depth_anything_vitl14.pth
+ls -lh pretrained/raft-things.pth
 
 ----
 example on sintel:

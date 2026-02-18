@@ -39,12 +39,16 @@ RUN pip install --upgrade pip setuptools==69.5.1
 
 RUN pip install \
     torch \
-    torchvision \
+    torchvision==0.25.0 \
     --index-url https://download.pytorch.org/whl/cu128
 
 RUN pip install \
     torch-scatter \
     -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
+
+# RUN pip install setuptools wheel
+# RUN pip install torch-scatter --no-build-isolation --no-cache-dir
+
 
 RUN pip install \
     xformers \

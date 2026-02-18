@@ -155,7 +155,7 @@ class SILog(nn.Module):
         self.norm = norm
         self.eps: float = eps
 
-    @torch.cuda.amp.autocast(enabled=False)
+    @torch.amp.autocast('cuda', enabled=False)
     def forward(
         self,
         input: torch.Tensor,
@@ -241,7 +241,7 @@ class MSE(nn.Module):
         self.weight: float = weight
         self.eps = 1e-6
 
-    @torch.cuda.amp.autocast(enabled=False)
+    @torch.amp.autocast('cuda', enabled=False)
     def forward(
         self,
         input: torch.Tensor,
@@ -293,7 +293,7 @@ class SelfCons(nn.Module):
         self.norm = norm
         self.eps: float = eps
 
-    @torch.cuda.amp.autocast(enabled=False)
+    @torch.amp.autocast('cuda', enabled=False)
     def forward(
         self,
         input: torch.Tensor,
