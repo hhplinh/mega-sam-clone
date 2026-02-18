@@ -2,13 +2,13 @@
 
 # ---- Setup of paths (edit as needed) and conda env
 # Set cache directories for models so you don't fill up home directory
-TORCH_HOME="/volume/.cache"
-HF_HOME="/volume/.cache"
+TORCH_HOME=".cache"
+HF_HOME=".cache"
 
 # Set scene name and directories (data dir is where you have your frames, our dir is where ALL outputs will go)
-scene_name="teddy"
-DATA_DIR=/volume/data/Casual/$scene_name/images
-OUT_DIR=/volume/output/Casual/$scene_name/megasam
+scene_name="fish"
+DATA_DIR=inference/data/$scene_name
+OUT_DIR=inference/output/$scene_name
 mkdir -p $OUT_DIR
 # (Derived paths for intermediate outputs no need to do anything)
 MONO_DEPTH_PATH=$OUT_DIR/depth_anything
@@ -16,11 +16,11 @@ METRIC_DEPTH_PATH=$OUT_DIR/unidepth
 
 # Set checkpoints for downloaded pretrained models (mega sam is already in the repo, others you need to download)
 MEGASAM_CKPT=checkpoints/megasam_final.pth 
-RAFT_CKPT=/volume/pretrained/raft-things.pth
-DEPTH_ANY_CKPT=/volume/pretrained/depth_anything_vitl14.pth
+RAFT_CKPT=pretrained/raft-things.pth
+DEPTH_ANY_CKPT=pretrained/depth_anything_vitl14.pth
 
 # Activate conda environment (make sure you source conda.sh from your install location)
-source /root/anaconda3/etc/profile.d/conda.sh
+source /opt/conda/etc/profile.d/conda.sh
 conda activate mega_sam
 
 # --- Run the full pipeline (no need to change anything below here unless you want to modify parameters)
@@ -38,7 +38,7 @@ CUDA_VISIBLE_DEVICES=0 python UniDepth/scripts/demo_mega-sam.py \
 --outdir $OUT_DIR/unidepth
 
 # Run camera tracking
-CUDA_VISIBLE_DEVICE=0 python camera_tracking_scripts/test_demo.py \
+CUDA_VISIBLE_DEVICES=0 python camera_tracking_scripts/test_demo.py \
 --datapath=$DATA_DIR \
 --weights=$MEGASAM_CKPT \
 --scene_name $scene_name \

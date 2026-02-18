@@ -1,74 +1,91 @@
-## Docker
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
 
-## Unofficial Dockerfile for 3D Gaussian Splatting for Real-Time Radiance Field Rendering
-## Bernhard Kerbl, Georgios Kopanas, Thomas Leimkühler, George Drettakis
-## https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/
 
-# Use the base image with PyTorch and CUDA support
-# FROM pytorch/pytorch:2.7.0-cuda12.6-cudnn9-devel
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
-
-# NOTE:
-# Building the libraries for this repository requires cuda *DURING BUILD PHASE*, therefore:
-# - The default-runtime for container should be set to "nvidia" in the deamon.json file. See this: https://github.com/NVIDIA/nvidia-docker/issues/1033
-# - For the above to work, the nvidia-container-runtime should be installed in your host. Tested with version 1.14.0-rc.2
-# - Make sure NVIDIA's drivers are updated in the host machine. Tested with 525.125.06
 ENV DEBIAN_FRONTEND=noninteractive
-ARG TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6"
+ENV TORCH_CUDA_ARCH_LIST="12.0"
+ENV CUDA_HOME=/usr/local/cuda
 
-RUN apt-get update && \
-    apt-get install -y wget
+ENV TORCH_DONT_CHECK_COMPILER_VERSION=1
 
-# Install miniconda
+# 2. Add CUDA binaries to PATH
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+
+# 3. Add CUDA libraries to LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    build-essential \
+    ffmpeg \
+    tar \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- Miniconda ----
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-1-Linux-x86_64.sh -O /tmp/miniconda.sh && \
     bash /tmp/miniconda.sh -b -p /opt/conda && \
-    rm /tmp/miniconda.sh && \
-    echo "export PATH=/opt/conda/bin:$PATH" > /etc/profile.d/conda.sh
-ENV PATH /opt/conda/bin:$PATH
+    rm /tmp/miniconda.sh
 
+ENV PATH=/opt/conda/bin:$PATH
 
-COPY  environment.yml /tmp/environment.yml
-WORKDIR /tmp/
+# ---- Conda env ----
+COPY environment.yml /tmp/environment.yml
+WORKDIR /tmp
 
-RUN conda env create -f environment.yml && \
-    conda init bash && exec bash
+RUN conda env create -f environment.yml
+SHELL ["conda", "run", "-n", "mega_sam", "/bin/bash", "-c"]
 
-RUN conda run -n mega_sam pip install setuptools==69.5.1
+# ---- Torch stack ----
+RUN pip install --upgrade pip setuptools==69.5.1
 
+RUN pip install \
+    torch==2.7.0 \
+    torchvision==0.22.0 \
+    --index-url https://download.pytorch.org/whl/cu128
 
-# Install torch afterwards
-RUN conda run -n mega_sam pip install torch==2.0.1+cu118 torchvision==0.15.2 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip install \
+    torch-scatter==2.1.2 \
+    -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
 
-# installing torch scatter afterwards
-RUN conda run -n mega_sam python -m pip install --no-cache-dir \
-  torch-scatter==2.1.2 \
-  -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+RUN pip install \
+    xformers \
+    --index-url https://download.pytorch.org/whl/cu128
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc-12 \
+    g++-12
 
-RUN wget https://anaconda.org/xformers/xformers/0.0.22.post7/download/linux-64/xformers-0.0.22.post7-py310_cu11.8.0_pyt2.0.1.tar.bz2
-RUN conda install -n mega_sam xformers-0.0.22.post7-py310_cu11.8.0_pyt2.0.1.tar.bz2
+# Set GCC-12 as the default compiler (Priority 100)
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
 
+# ---- Project ----
+# 1. COPY THE CODE FIRST
+COPY base /tmp/base
+WORKDIR /tmp/base
 
-COPY base /tmp/base/
-WORKDIR /tmp/base/
+#----------------
 
-# g++ for installing afterwards
-RUN apt-get update && apt-get install -y \
-    build-essential ffmpeg
+RUN rm -rf thirdparty/eigen && \
+    wget -qO - https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz | tar -xz && \
+    mv eigen-3.4.0 thirdparty/eigen
 
-RUN conda run -n mega_sam python setup.py install
+# RUN find src thirdparty -type f \( -name "*.cu" -o -name "*.cpp" -o -name "*.h" \) -exec sed -i 's/\.scalar_type()/.scalar_type()/g' {} +
 
+ENV TORCH_DONT_CHECK_COMPILER_VERSION=1
+ENV MAX_JOBS=1
+ENV TORCH_NVCC_FLAGS="-w"
+ENV CFLAGS="-w"
+ENV CXXFLAGS="-w"
+#----------------------
 
-# For visualization only
-RUN conda run -n mega_sam pip install viser
+RUN python setup.py install
+
+RUN pip install viser
 
 WORKDIR /mega_sam
 ENV PYTHONPATH="/mega_sam/UniDepth:$PYTHONPATH"
 
-# This error occurs because there’s a conflict between the threading layer used
-# by Intel MKL (Math Kernel Library) and the libgomp library, 
-# which is typically used by OpenMP for parallel processing. 
-# This often happens when libraries like NumPy or SciPy are used in combination
-# with a multithreaded application (e.g., your Docker container or Python environment).
-# Solution, set threading layer explicitly! (GNU or INTEL)
 ENV MKL_THREADING_LAYER=GNU
+
+RUN echo "source /opt/conda/etc/profile.d/conda.sh" >> /root/.bashrc
+RUN echo "conda activate mega_sam" >> /root/.bashrc

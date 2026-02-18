@@ -1,0 +1,40 @@
+docker build -t mega-sam:cu128 .
+
+docker run --rm -it --gpus all \
+  -v "$PWD:/workspace/megasam" \
+  -w /workspace/megasam \
+  mega-sam:cu128
+
+python -m pip install -U gdown typing_extensions bs4
+
+python -m gdown --folder https://drive.google.com/drive/folders/1sWDsfuZ3Up38EUQt7-JDTT1HcGHuJgvT \-O pretrained/
+
+wget https://huggingface.co/spaces/LiheYoung/Depth-Anything/resolve/main/checkpoints/depth_anything_vitl14.pth -O pretrained/depth_anything_vitl14.pth
+
+# add dataset folder then mount again
+
+
+ls -lh Depth-Anything/checkpoints/depth_anything_vitl14.pth
+ls -lh cvd_opt/raft-things.pth
+
+----
+example on sintel:
+bash ./mono_depth_scripts/run_mono-depth_sintel.sh
+bash ./tools/evaluate_sintel.sh
+bash ./cvd_opt/cvd_opt_sintel.sh
+python ./evaluations_poses/evaluate_sintel.pyC
+python ./evaluations_depth/evaluate_depth_ours_sintel.py
+
+----
+
+ffmpeg -i data/src.mp4 data/frames/frame_%06d.jpg
+
+
+-----
+conda config --set channel_priority strict
+conda env create -f environment.yml
+conda activate mega_sam
+python3 -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
+
+----
+conda env remove -n mega_sam
