@@ -38,12 +38,12 @@ SHELL ["conda", "run", "-n", "mega_sam", "/bin/bash", "-c"]
 RUN pip install --upgrade pip setuptools==69.5.1
 
 RUN pip install \
-    torch==2.7.0 \
-    torchvision==0.22.0 \
+    torch \
+    torchvision \
     --index-url https://download.pytorch.org/whl/cu128
 
 RUN pip install \
-    torch-scatter==2.1.2 \
+    torch-scatter \
     -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
 
 RUN pip install \
