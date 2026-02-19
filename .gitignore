@@ -9,6 +9,7 @@ __pycache__/
 *.pth
 *.npy
 *.npz
+*.zip
 
 # C extensions
 *.so

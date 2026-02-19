@@ -37,10 +37,24 @@ RUN conda env create -f environment.yml
 SHELL ["conda", "run", "-n", "mega_sam", "/bin/bash", "-c"]
 
 # ---- Torch stack ----
-RUN pip install --upgrade pip setuptools wheel
-RUN pip install torch torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/nightly/cu128
+# RUN python -m pip install --upgrade pip setuptools wheel
+# RUN pip install torch==2.8.0.dev20250626+cu128 torchvision==0.23.0.dev20250627+cu128 --index-url https://download.pytorch.org/whl/nightly/cu128
 
+# RUN pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 xformers==0.0.30 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall --no-deps
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+
+RUN pip install --no-build-isolation --pre -v -U git+https://github.com/facebookresearch/xformers.git@fde5a2fb46e3f83d73e2974a4d12caf526a4203e
+
+# RUN pip install nvidia-cusparselt-cu12
 RUN pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_scatter.git
+
+RUN pip install ninja
+# RUN pip install -v --no-build-isolation -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
+
+# RUN pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+
+
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-12 \

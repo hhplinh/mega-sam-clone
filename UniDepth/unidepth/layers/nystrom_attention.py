@@ -5,10 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from xformers.components.attention import NystromAttention
+# import xformers.ops as xops
+# actually not Nystrom, but just a wrapper around xformers' memory efficient attention with the same interface as our AttentionBlock
 
 from .attention import AttentionBlock
-
-# class NystromAttention: pass
 
 class NystromBlock(AttentionBlock):
     def __init__(
@@ -34,7 +34,6 @@ class NystromBlock(AttentionBlock):
         )
         self.attention_fn = NystromAttention(
             num_landmarks=128, num_heads=num_heads, dropout=dropout
-        )
 
     def attn(
         self,
@@ -70,6 +69,30 @@ class NystromBlock(AttentionBlock):
         if self.cosine:
             q, k = map(partial(F.normalize, p=2, dim=-1), (q, k))  # cosine sim
         x = self.attention_fn(q, k, v, key_padding_mask=attn_bias)
+        # # ---------------------------------------------------------
+        # # UPDATED xFormers Block
+        # # ---------------------------------------------------------
+        
+        # # 1. Force contiguous memory after all the rearranging and rope modifications
+        # q = q.contiguous()
+        # k = k.contiguous()
+        # v = v.contiguous()
+
+        # # 2. Downcast back from float32 to match your autocast environment
+        # # (bfloat16 is highly recommended for your Compute 12.0 GPU)
+        # target_dtype = torch.bfloat16 
+        
+        # q = q.to(target_dtype)
+        # k = k.to(target_dtype)
+        # v = v.to(target_dtype)
+
+        # # 3. Call xformers
+        # x = xops.memory_efficient_attention(
+        #     q, k, v, 
+        #     attn_bias=attn_bias, 
+        #     p=self.dropout      
+        # )
+        # # ---------------------------------------------------------
         x = rearrange(x, "b n h d -> b n (h d)")
         x = self.out(x)
         return x
