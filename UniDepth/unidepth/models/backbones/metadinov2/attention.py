@@ -10,6 +10,7 @@
 
 import logging
 
+import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -76,8 +77,16 @@ class MemEffAttention(Attention):
 
         q, k, v = unbind(qkv, 2)
 
+        target_dtype = torch.bfloat16
+        q = q.to(target_dtype)
+        k = k.to(target_dtype)
+        v = v.to(target_dtype)
+
+
         x = memory_efficient_attention(q, k, v, attn_bias=attn_bias)
         x = x.reshape([B, N, C])
+
+        x = x.to(torch.float32)
 
         x = self.proj(x)
         x = self.proj_drop(x)
