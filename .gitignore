@@ -2,6 +2,13 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.png
+*.jpg
+*.jpeg
+*.pth
+*.npy
+*.npz
+*.deb
 
 # C extensions
 *.so
