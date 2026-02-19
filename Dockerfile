@@ -18,6 +18,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     ffmpeg \
     tar \
+    git \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Miniconda ----
@@ -35,20 +37,10 @@ RUN conda env create -f environment.yml
 SHELL ["conda", "run", "-n", "mega_sam", "/bin/bash", "-c"]
 
 # ---- Torch stack ----
-RUN pip install --upgrade pip setuptools==69.5.1
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 
-RUN pip install \
-    torch \
-    torchvision==0.25.0 \
-    --index-url https://download.pytorch.org/whl/cu128
-
-RUN pip install \
-    torch-scatter \
-    -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
-
-# RUN pip install setuptools wheel
-# RUN pip install torch-scatter --no-build-isolation --no-cache-dir
-
+RUN pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_scatter.git
 
 RUN pip install \
     xformers \

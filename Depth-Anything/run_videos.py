@@ -102,17 +102,17 @@ if __name__ == '__main__':
     image = torch.from_numpy(image).unsqueeze(0).cuda()
 
     # start = timer()
-    with torch.no_grad():
+    with torch.amp.autocast('cuda'):
       depth = depth_anything(image)
     # end = timer()
 
     depth = F.interpolate(
         depth[None], (h, w), mode='bilinear', align_corners=False
     )[0, 0]
-    depth_npy = np.float32(depth.cpu().numpy())
+    depth_npy = np.float32(depth.detach().cpu().numpy())
     depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
 
-    depth = depth.cpu().numpy().astype(np.uint8)
+    depth = depth.detach().cpu().numpy().astype(np.uint8)
     depth_color = cv2.applyColorMap(depth, cv2.COLORMAP_INFERNO)
 
     os.makedirs(os.path.join(args.outdir), exist_ok=True)
