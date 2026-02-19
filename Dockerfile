@@ -33,6 +33,7 @@ WORKDIR /tmp/
 RUN conda env create -f environment.yml && \
     conda init bash && exec bash
 
+RUN conda run -n mega_sam pip install setuptools>=65.0.0
 # Install torch afterwards
 RUN conda run -n mega_sam pip install torch==2.0.1+cu118 torchvision==0.15.2 -f https://download.pytorch.org/whl/torch_stable.html
 

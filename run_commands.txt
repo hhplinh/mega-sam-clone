@@ -1,0 +1,62 @@
+docker build -t mega-sam:cu128 .
+
+docker run --rm -it --gpus all \
+  -v "$PWD:/workspace/megasam" \
+  -w /workspace/megasam \
+  mega-sam:cu128
+
+python -m pip install -U gdown typing_extensions bs4
+
+python -m gdown --folder https://drive.google.com/drive/folders/1sWDsfuZ3Up38EUQt7-JDTT1HcGHuJgvT \-O pretrained/
+
+wget https://huggingface.co/spaces/LiheYoung/Depth-Anything/resolve/main/checkpoints/depth_anything_vitl14.pth -O pretrained/depth_anything_vitl14.pth
+
+
+ls -lh pretrained/depth_anything_vitl14.pth
+ls -lh pretrained/raft-things.pth
+
+----
+example on sintel:
+bash ./mono_depth_scripts/run_mono-depth_sintel.sh
+bash ./tools/evaluate_sintel.sh
+bash ./cvd_opt/cvd_opt_sintel.sh
+python ./evaluations_poses/evaluate_sintel.pyC
+python ./evaluations_depth/evaluate_depth_ours_sintel.py
+
+----
+
+ffmpeg -i data/src.mp4 data/frames/frame_%06d.jpg
+
+
+-----
+conda config --set channel_priority strict
+conda env create -f environment.yml
+conda activate mega_sam
+python3 -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
+
+----
+conda env remove -n mega_sam
+
+
+python -c "import torch_scatter; print('Success')"
+python -c "import torch; import torchvision; print(torchvision.ops.nms(torch.rand(5, 4), torch.rand(5), 0.5))"
+
+------------
+
+apt-get update && apt-get install -y git build-essential libgl1
+
+# Force reinstall torch components from the nightly index
+pip install --force-reinstall --pre torch torchvision torchaudio xformers\
+  --index-url https://download.pytorch.org/whl/nightly/cu128
+
+# 1. Uninstall broken version
+pip uninstall torch-scatter -y
+
+# 2. Set target architecture to Blackwell (sm_120)
+export TORCH_CUDA_ARCH_LIST="12.0"
+
+# 3. Install from source without isolation (uses your local PyTorch)
+pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_scatter.git
+
+
+pip install "numpy<2"
