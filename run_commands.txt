@@ -5,9 +5,23 @@ docker run --rm -it --gpus all \
   -w /workspace/megasam \
   mega-sam:cu128
 
-python -m pip install -U gdown typing_extensions bs4
 
-python -m gdown --folder https://drive.google.com/drive/folders/1sWDsfuZ3Up38EUQt7-JDTT1HcGHuJgvT \-O pretrained/
+-----
+
+docker build -t mega-sam:cu118 .
+
+docker run --rm -it --gpus all \
+  -v "$PWD:/workspace/megasam" \
+  -w /workspace/megasam \
+  mega-sam:cu118
+
+
+
+-------
+
+python3 -m pip install -U gdown typing_extensions bs4
+
+python3 -m gdown --folder https://drive.google.com/drive/folders/1sWDsfuZ3Up38EUQt7-JDTT1HcGHuJgvT \-O pretrained/
 
 wget https://huggingface.co/spaces/LiheYoung/Depth-Anything/resolve/main/checkpoints/depth_anything_vitl14.pth -O pretrained/depth_anything_vitl14.pth
 
