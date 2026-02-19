@@ -38,13 +38,9 @@ SHELL ["conda", "run", "-n", "mega_sam", "/bin/bash", "-c"]
 
 # ---- Torch stack ----
 RUN pip install --upgrade pip setuptools wheel
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+RUN pip install torch torchvision torchaudio xformers --index-url https://download.pytorch.org/whl/nightly/cu128
 
 RUN pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_scatter.git
-
-RUN pip install \
-    xformers \
-    --index-url https://download.pytorch.org/whl/cu128
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-12 \

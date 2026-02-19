@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
-# from xformers.components.attention import NystromAttention
+from xformers.components.attention import NystromAttention
 
 from .attention import AttentionBlock
 
-class NystromAttention: pass
+# class NystromAttention: pass
 
 class NystromBlock(AttentionBlock):
     def __init__(
