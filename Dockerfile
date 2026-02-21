@@ -1,11 +1,20 @@
 FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
+# FROM nvcr.io/nvidia/pytorch:25.01-py3
 
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TORCH_CUDA_ARCH_LIST="12.0+PTX"
 ENV CUDA_HOME=/usr/local/cuda
+ENV FORCE_CUDA="1"
 
 ENV TORCH_DONT_CHECK_COMPILER_VERSION=1
+
+ENV TORCH_DONT_CHECK_COMPILER_VERSION=1
+ENV MAX_JOBS=1
+ENV TORCH_NVCC_FLAGS="-w"
+ENV CFLAGS="-w"
+ENV CXXFLAGS="-w"
+ENV USE_NINJA=1
 
 # 2. Add CUDA binaries to PATH
 ENV PATH=${CUDA_HOME}/bin:${PATH}
@@ -75,16 +84,16 @@ RUN rm -rf thirdparty/eigen && \
     wget -qO - https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz | tar -xz && \
     mv eigen-3.4.0 thirdparty/eigen
 
-# RUN find src thirdparty -type f \( -name "*.cu" -o -name "*.cpp" -o -name "*.h" \) -exec sed -i 's/\.scalar_type()/.scalar_type()/g' {} +
-
-ENV TORCH_DONT_CHECK_COMPILER_VERSION=1
-ENV MAX_JOBS=1
-ENV TORCH_NVCC_FLAGS="-w"
-ENV CFLAGS="-w"
-ENV CXXFLAGS="-w"
 #----------------------
 
-RUN python setup.py install
+# 1. Clear any pre-existing build artifacts that might have been copied over
+RUN rm -rf build/ dist/ *.egg-info
+
+# 2. Re-compile specifically for Blackwell (SM 12.0)
+# Use 'conda run' to ensure the environment's nvcc and python are used
+RUN conda run -n mega_sam python setup.py clean --all && \
+    TORCH_CUDA_ARCH_LIST="12.0" FORCE_CUDA="1" \
+    conda run -n mega_sam python setup.py install
 
 RUN pip install viser
 
