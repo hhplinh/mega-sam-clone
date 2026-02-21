@@ -93,6 +93,8 @@ class NystromBlock(AttentionBlock):
             attn_bias=attn_bias, 
             p=self.dropout      
         )
+
+        x = x.to(torch.float32)
         # ---------------------------------------------------------
         x = rearrange(x, "b n h d -> b n (h d)")
         x = self.out(x)
