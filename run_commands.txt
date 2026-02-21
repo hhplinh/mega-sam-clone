@@ -1,4 +1,5 @@
 docker build -t mega-sam:cu128 .
+docker build --no-cache -t mega-sam:cu128 .
 
 docker run --rm -it --gpus all \
   -v "$PWD:/workspace/megasam" \
