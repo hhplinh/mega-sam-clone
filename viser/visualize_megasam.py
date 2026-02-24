@@ -54,6 +54,7 @@ def main(
         xyzw=xyzw,
         init_conf=init_conf,
     )
+    print(f"Number of frames in data: {loader.num_frames()}")
     num_frames = min(max_frames, loader.num_frames())
 
     # Add playback UI.
