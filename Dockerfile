@@ -58,12 +58,10 @@ RUN pip install --no-build-isolation --pre -v -U git+https://github.com/facebook
 # RUN pip install nvidia-cusparselt-cu12
 RUN pip install --no-build-isolation git+https://github.com/rusty1s/pytorch_scatter.git
 
-RUN pip install ninja
+RUN pip install ninja tyro plotly
 # RUN pip install -v --no-build-isolation -U git+https://github.com/facebookresearch/xformers.git@main#egg=xformers
 
 # RUN pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
-
-
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-12 \
@@ -72,6 +70,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set GCC-12 as the default compiler (Priority 100)
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 && \
     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+
+
+COPY viser /tmp/viser
+WORKDIR /tmp
+# RUN echo "Searching for 'viser' folder..." && \
+#     find . -iname "viser" -type d
+
+RUN pip install -e viser
 
 # ---- Project ----
 # 1. COPY THE CODE FIRST
@@ -89,16 +95,19 @@ RUN rm -rf thirdparty/eigen && \
 # 1. Clear any pre-existing build artifacts that might have been copied over
 RUN rm -rf build/ dist/ *.egg-info
 
+
 # 2. Re-compile specifically for Blackwell (SM 12.0)
 # Use 'conda run' to ensure the environment's nvcc and python are used
-RUN conda run -n mega_sam python setup.py clean --all && \
-    TORCH_CUDA_ARCH_LIST="12.0" FORCE_CUDA="1" \
-    conda run -n mega_sam python setup.py install
+# RUN conda run -n mega_sam python setup.py clean --all && \
+#     TORCH_CUDA_ARCH_LIST="12.0" FORCE_CUDA="1" \
+#     conda run -n mega_sam python setup.py install
 
-RUN pip install viser
+RUN TORCH_CUDA_ARCH_LIST="12.0" FORCE_CUDA="1" \
+    conda run -n mega_sam python setup.py install
 
 WORKDIR /mega_sam
 ENV PYTHONPATH="/mega_sam/UniDepth:$PYTHONPATH"
+
 
 ENV MKL_THREADING_LAYER=GNU
 
