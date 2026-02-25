@@ -263,7 +263,43 @@ if __name__ == "__main__":
   )
   intrinsics = np.load(rootdir / "intrinsics.npy")
   poses = np.load(rootdir / "poses.npy")
-  mot_prob = np.load(rootdir / "motion_prob.npy")
+
+  mot_prob = np.load(rootdir / "motion_prob.npy", allow_pickle=True)
+  print(f"Loaded mot_prob: type={type(mot_prob)}, shape={getattr(mot_prob, 'shape', None)}, dtype={getattr(mot_prob, 'dtype', None)}")
+  # Handle object dtype by stacking or concatenating if needed
+  if isinstance(mot_prob, np.ndarray):
+      if mot_prob.dtype == object:
+          # Try to stack or concatenate, depending on the shape of the objects
+          try:
+              mot_prob = np.concatenate(mot_prob, axis=0)
+          except Exception:
+              try:
+                  mot_prob = np.stack(mot_prob, axis=0)
+              except Exception:
+                  # If still fails, try to flatten and wrap as array
+                  mot_prob = np.array([mot_prob])
+      elif mot_prob.ndim == 0:
+          # 0-d array, wrap in a list then stack
+          mot_prob = np.array([mot_prob.item()])
+  else:
+      # Not an array, wrap in array
+      mot_prob = np.array([mot_prob])
+  mot_prob = mot_prob.astype(np.float32)
+  # Ensure mot_prob is at least 4D for interpolation
+  if mot_prob.ndim < 4:
+      # Try to infer shape from disp_data or img_data
+      ref_shape = None
+      if 'disp_data' in locals() and hasattr(disp_data, 'shape'):
+          ref_shape = disp_data.shape
+      elif 'img_data' in locals() and hasattr(img_data, 'shape'):
+          ref_shape = img_data.shape
+      if ref_shape is not None:
+          # Expand mot_prob to match batch and spatial dims
+          mot_prob = np.broadcast_to(mot_prob, (ref_shape[0], ref_shape[1], ref_shape[2]))
+          mot_prob = mot_prob[np.newaxis, ...]  # Add channel dim
+      else:
+          # Fallback: expand to (1, 1, 1, 1)
+          mot_prob = mot_prob.reshape(1, 1, 1, 1)
 
   flows = np.load(
       cache_dir / "flows.npy", allow_pickle=True
@@ -314,11 +350,32 @@ if __name__ == "__main__":
   fg_alpha = sobel_fg_alpha(init_disp[:, None, ...]) > 0.2
   fg_alpha = fg_alpha.squeeze(1).float() + 0.2
 
-  cvd_prob = torch.nn.functional.interpolate(
-      torch.from_numpy(mot_prob).unsqueeze(1).cuda(),
-      scale_factor=(4, 4),
-      mode="bilinear",
-  )
+  # Reshape mot_prob to (1, 1, H, W) for interpolation
+  if mot_prob.ndim == 3:
+      mot_prob = mot_prob[np.newaxis, np.newaxis, ...]
+  elif mot_prob.ndim == 4:
+      pass  # Already correct
+  else:
+      raise ValueError(f"mot_prob shape not supported for interpolation: {mot_prob.shape}")
+  mot_prob = mot_prob.copy()  # Make writable for torch
+
+  torch.cuda.empty_cache()  # Free up GPU memory before allocating cvd_prob
+  # Process mot_prob in smaller batches to avoid CUDA OOM
+  batch_size = 100  # Adjust as needed for your GPU
+  num_frames = mot_prob.shape[2]
+  batches = []
+  for start in range(0, num_frames, batch_size):
+      end = min(start + batch_size, num_frames)
+      mot_prob_batch = mot_prob[:, :, :, start:end]
+      mot_prob_batch_torch = torch.from_numpy(mot_prob_batch).cuda()
+      cvd_prob_batch = torch.nn.functional.interpolate(
+          mot_prob_batch_torch,
+          scale_factor=(4, 4),
+          mode="bilinear",
+      )
+      batches.append(cvd_prob_batch.cpu())
+      torch.cuda.empty_cache()
+  cvd_prob = torch.cat(batches, dim=-1).cuda()
   cvd_prob[cvd_prob > 0.5] = 0.5
   cvd_prob = torch.clamp(cvd_prob, 1e-3, 1.0)
 
@@ -351,37 +408,39 @@ if __name__ == "__main__":
   )
   init_disp = torch.clamp(init_disp, 1e-3, 1e3)
 
-  for i in range(100):
-    optim.zero_grad()
-    cam_c2w = SE3(poses_th).inv().matrix()
-    scale_ = torch.exp(log_scale_)
 
-    loss = consistency_loss(
-        cam_c2w,
-        K,
-        K_inv,
-        torch.clamp(
-            disp_data * scale_[..., None, None] + shift_[..., None, None],
-            1e-3,
-            1e3,
-        ),
-        init_disp,
-        torch.clamp(uncertainty, 1e-4, 1e3),
-        flows,
-        flow_masks,
-        ii,
-        jj,
-        compute_normals,
-        fg_alpha,
-    )
+    for i in range(100):
+        optim.zero_grad()
+        cam_c2w = SE3(poses_th).inv().matrix()
+        scale_ = torch.exp(log_scale_)
 
-    loss.backward()
-    uncertainty.grad = torch.nan_to_num(uncertainty.grad, nan=0.0)
-    log_scale_.grad = torch.nan_to_num(log_scale_.grad, nan=0.0)
-    shift_.grad = torch.nan_to_num(shift_.grad, nan=0.0)
+        loss = consistency_loss(
+                cam_c2w,
+                K,
+                K_inv,
+                torch.clamp(
+                        disp_data * scale_[..., None, None] + shift_[..., None, None],
+                        1e-3,
+                        1e3,
+                ),
+                init_disp,
+                torch.clamp(uncertainty, 1e-4, 1e3),
+                flows,
+                flow_masks,
+                ii,
+                jj,
+                compute_normals,
+                fg_alpha,
+        )
 
-    optim.step()
-    print("step ", i, loss.item())
+        loss.backward()
+        uncertainty.grad = torch.nan_to_num(uncertainty.grad, nan=0.0)
+        log_scale_.grad = torch.nan_to_num(log_scale_.grad, nan=0.0)
+        shift_.grad = torch.nan_to_num(shift_.grad, nan=0.0)
+
+        optim.step()
+        print("step ", i, loss.item())
+        torch.cuda.empty_cache()
 
   # Then optimize depth and uncertainty
   disp_data = (
@@ -404,36 +463,38 @@ if __name__ == "__main__":
   ])
 
   losses = []
-  for i in range(400):
-    optim.zero_grad()
-    cam_c2w = SE3(poses_th).inv().matrix()
-    loss = consistency_loss(
-        cam_c2w,
-        K,
-        K_inv,
-        torch.clamp(disp_data, 1e-3, 1e3),
-        init_disp,
-        torch.clamp(uncertainty, 1e-4, 1e3),
-        flows,
-        flow_masks,
-        ii,
-        jj,
-        compute_normals,
-        fg_alpha,
-        w_ratio=1.0,
-        w_flow=0.2,
-        w_si=1,
-        w_grad=args.w_grad,
-        w_normal=args.w_normal,
-    )
 
-    loss.backward()
-    disp_data.grad = torch.nan_to_num(disp_data.grad, nan=0.0)
-    uncertainty.grad = torch.nan_to_num(uncertainty.grad, nan=0.0)
+    for i in range(400):
+        optim.zero_grad()
+        cam_c2w = SE3(poses_th).inv().matrix()
+        loss = consistency_loss(
+                cam_c2w,
+                K,
+                K_inv,
+                torch.clamp(disp_data, 1e-3, 1e3),
+                init_disp,
+                torch.clamp(uncertainty, 1e-4, 1e3),
+                flows,
+                flow_masks,
+                ii,
+                jj,
+                compute_normals,
+                fg_alpha,
+                w_ratio=1.0,
+                w_flow=0.2,
+                w_si=1,
+                w_grad=args.w_grad,
+                w_normal=args.w_normal,
+        )
 
-    optim.step()
-    print("step ", i, loss.item())
-    losses.append(loss)
+        loss.backward()
+        disp_data.grad = torch.nan_to_num(disp_data.grad, nan=0.0)
+        uncertainty.grad = torch.nan_to_num(uncertainty.grad, nan=0.0)
+
+        optim.step()
+        print("step ", i, loss.item())
+        losses.append(loss)
+        torch.cuda.empty_cache()
 
   disp_data_opt = (
       torch.nn.functional.interpolate(

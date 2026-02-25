@@ -122,10 +122,16 @@ def save_full_reconstruction(
 
     out_dir = Path(out_dir) / "reconstructions"
     out_dir.mkdir(parents=True, exist_ok=True)
+
     np.save(out_dir / "images.npy", images)
     np.save(out_dir / "disps.npy", disps)
     np.save(out_dir / "poses.npy", poses)
     np.save(out_dir / "intrinsics.npy", intrinsics * 8.0)
+
+    # Ensure motion_prob is always a valid array
+    if motion_prob is None or (isinstance(motion_prob, (float, int)) or (isinstance(motion_prob, np.ndarray) and motion_prob.shape == ())):
+        # Use zeros with same spatial shape as disps
+        motion_prob = np.zeros_like(disps)
     np.save(out_dir / "motion_prob.npy", motion_prob)
 
     intrinsics = intrinsics[0] * 8.0
