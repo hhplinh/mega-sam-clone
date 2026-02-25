@@ -19,15 +19,17 @@
 # pylint: disable=g-importing-member
 # pylint: disable=redefined-outer-name
 
+
 import argparse
 import os
 from pathlib import Path
-
-from geometry_utils import NormalGenerator
+from geometry_utils import *
 import kornia
 from lietorch import SE3
 import numpy as np
 import torch
+import torch.optim as optim
+
 
 
 def gradient_loss(gt, pred, u):
@@ -346,6 +348,27 @@ if __name__ == "__main__":
 		scale_factor=(RESIZE_FACTOR, RESIZE_FACTOR),
 		mode="bilinear",
 	).squeeze(1)
+
+	# Define missing variables
+	# K_inv: inverse of K
+	K_inv = torch.inverse(K)
+
+	# log_scale_ and shift_: learnable parameters for scale and shift, initialized to zeros
+	log_scale_ = torch.nn.Parameter(torch.zeros(init_disp.shape[0], device=init_disp.device, dtype=init_disp.dtype))
+	shift_ = torch.nn.Parameter(torch.zeros(init_disp.shape[0], device=init_disp.device, dtype=init_disp.dtype))
+
+	# uncertainty: initialized to ones, shape (B, 1, H, W)
+	uncertainty = torch.nn.Parameter(torch.ones(init_disp.shape[0], 1, init_disp.shape[1], init_disp.shape[2], device=init_disp.device, dtype=init_disp.dtype))
+
+	# K_o: original K (before torch conversion)
+	K_o = torch.from_numpy(np.array([
+		[intrinsics[0], 0, intrinsics[2]],
+		[0, intrinsics[1], intrinsics[3]],
+		[0, 0, 1]
+	])).float()
+
+	# compute_normals: list with one NormalGenerator instance
+	compute_normals = [NormalGenerator(init_disp.shape[1], init_disp.shape[2]).cuda()]
 
 	fg_alpha = sobel_fg_alpha(init_disp[:, None, ...]) > 0.2
 	fg_alpha = fg_alpha.squeeze(1).float() + 0.2
