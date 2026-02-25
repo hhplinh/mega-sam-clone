@@ -44,7 +44,11 @@ CUDA_VISIBLE_DEVICES=0 python camera_tracking_scripts/test_demo.py \
 --scene_name $scene_name \
 --mono_depth_path $MONO_DEPTH_PATH \
 --metric_depth_path $METRIC_DEPTH_PATH \
---outdir $OUT_DIR
+--outdir $OUT_DIR \
+--window_size 50 \
+--stride 25 \
+--batch_size 16 \
+--eval_mode full_ba
 
 # Run Raft Optical Flows
 CUDA_VISIBLE_DEVICES=0 python cvd_opt/preprocess_flow.py \

@@ -12,6 +12,7 @@ docker run --rm -it --gpus all \
 
 bash run_megasam.sh 
 
+bash run_megasam.sh 
 find . -name "sgd_cvd_hr.npz"
 python viser/visualize_megasam.py --data inference/output/fish/sgd_cvd_hr.npz
 

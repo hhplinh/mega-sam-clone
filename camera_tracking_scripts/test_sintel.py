@@ -102,7 +102,8 @@ def save_full_reconstruction(
   disps = 1.0 / (np.array(senor_depth_list[:t]) + 1e-8)
 
   poses = full_traj  # .cpu().numpy()
-  intrinsics = droid.video.intrinsics[:t].cpu().numpy()
+    intrinsics_tensor = droid.video.intrinsics[:t]
+    intrinsics = intrinsics_tensor.cpu().numpy() if intrinsics_tensor is not None else None
 
   Path("reconstructions/{}".format(scene_name)).mkdir(
       parents=True, exist_ok=True
