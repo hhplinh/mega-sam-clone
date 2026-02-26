@@ -20,13 +20,27 @@ from corr import CorrBlock
 from extractor import BasicEncoder
 from extractor import SmallEncoder
 import torch
-import logging
 from torch import nn
 import torch.nn.functional as F
 from update import BasicUpdateBlock
 from update import SmallUpdateBlock
 from utils.utils import coords_grid
 from utils.utils import upflow8
+
+try:
+  autocast = torch.amp.autocast('cuda')
+except:  # pylint: disable=bare-except
+  # dummy autocast for PyTorch < 1.6
+  class autocast:  # pylint: disable=invalid-name
+
+    def __init__(self, enabled):
+      pass
+
+    def __enter__(self):
+      pass
+
+    def __exit__(self, *args):
+      pass
 
 
 class RAFT(nn.Module):
@@ -113,7 +127,6 @@ class RAFT(nn.Module):
   ):
     """Estimate optical flow between pair of frames."""
 
-    logging.debug(f"forward: image1 shape = {image1.shape}, image2 shape = {image2.shape}")
     image1 = 2 * (image1 / 255.0) - 1.0
     image2 = 2 * (image2 / 255.0) - 1.0
 
@@ -124,9 +137,8 @@ class RAFT(nn.Module):
     cdim = self.context_dim
 
     # run the feature network
-    with torch.amp.autocast(device_type='cuda', enabled=self.mixed_precision):
+    with autocast(enabled=self.mixed_precision):
       fmap1, fmap2 = self.fnet([image1, image2])
-    logging.debug(f"forward: fmap1 shape = {fmap1.shape}, fmap2 shape = {fmap2.shape}")
 
     fmap1 = fmap1.float()
     fmap2 = fmap2.float()
@@ -136,17 +148,15 @@ class RAFT(nn.Module):
       corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
 
     # run the context network
-    with torch.amp.autocast(device_type='cuda', enabled=self.mixed_precision):
+    with autocast(enabled=self.mixed_precision):
       cnet = self.cnet(image1)
       net, inp = torch.split(cnet, [hdim, cdim], dim=1)
       net = torch.tanh(net)
       inp = torch.relu(inp)
 
     coords0, coords1 = self.initialize_flow(image1)
-    logging.debug(f"forward: coords0 shape = {coords0.shape}, coords1 shape = {coords1.shape}")
 
     if flow_init is not None:
-      logging.debug(f"forward: flow_init shape = {flow_init.shape}")
       coords1 = coords1 + flow_init
 
     flow_predictions = []
@@ -156,7 +166,7 @@ class RAFT(nn.Module):
       corr = corr_fn(coords1)  # index correlation volume
 
       flow = coords1 - coords0
-      with torch.amp.autocast(device_type='cuda', enabled=self.mixed_precision):
+      with autocast(enabled=self.mixed_precision):
         net, up_mask, delta_flow = self.update_block(net, inp, corr, flow)
 
       # F(t+1) = F(t) + \Delta(t)

@@ -1,6 +1,5 @@
 docker build -t mega-sam:cu128 .
 docker build --no-cache -t mega-sam:cu128 .
-
 docker build --progress=plain -t mega-sam:cu128 . 2>&1 | tee build_log.txt
 
 
@@ -11,8 +10,8 @@ docker run --rm -it --gpus all \
   mega-sam:cu128
 
 bash run_megasam.sh 
+bash run_megasam.sh 2>&1 | tee megasam.log
 
-bash run_megasam.sh 
 find . -name "sgd_cvd_hr.npz"
 python viser/visualize_megasam.py --data inference/output/fish/sgd_cvd_hr.npz
 

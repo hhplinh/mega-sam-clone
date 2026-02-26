@@ -45,4 +45,3 @@ CUDA_VISIBLE_DEVICES=0 python cvd_opt/cvd_opt.py \
 --scene_name $scene_name \
 --output_dir $OUT_DIR \
 --w_grad 2.0 --w_normal 5.0 
-
