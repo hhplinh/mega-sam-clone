@@ -28,12 +28,6 @@ import kornia
 from lietorch import SE3
 import numpy as np
 import torch
-import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(levelname)s:%(name)s:%(message)s",
-)
 
 
 def gradient_loss(gt, pred, u):
@@ -181,11 +175,6 @@ def consistency_loss(
   loss_d_ratio += torch.sum(
       (ratio_error * uu + ALPHA_MOTION * torch.log(1.0 / uu)) * flow_masks_step_
   ) / (torch.sum(flow_masks_step_) + 1e-8)
-  
-  logging.debug(f"ratio_error shape: {ratio_error.shape}")
-  logging.debug(f"uu shape: {uu.shape}")
-  logging.debug(f"flow_masks_step_ shape: {flow_masks_step_.shape}")
-
 
   flow_error = torch.abs(pts_2D_tgt - pixel_locations)
   loss_flow += torch.sum(
