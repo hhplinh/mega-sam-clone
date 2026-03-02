@@ -6,7 +6,7 @@ TORCH_HOME=".cache"
 HF_HOME=".cache"
 
 # Set scene name and directories (data dir is where you have your frames, our dir is where ALL outputs will go)
-scene_name="fish"
+scene_name="test"
 DATA_DIR=inference/data/$scene_name
 OUT_DIR=inference/output/$scene_name
 mkdir -p $OUT_DIR

@@ -12,6 +12,9 @@ import torch
 import torch.nn.functional as F
 from torchvision.transforms import Compose
 from tqdm import tqdm
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -59,7 +62,7 @@ if __name__ == '__main__':
     ).cuda()
 
   total_params = sum(param.numel() for param in depth_anything.parameters())
-  print('Total parameters: {:.2f}M'.format(total_params / 1e6))
+  logging.info('Total parameters: {:.2f}M'.format(total_params / 1e6))
 
   depth_anything.load_state_dict(
       torch.load(args.load_from, map_location='cpu'), strict=True
@@ -91,6 +94,8 @@ if __name__ == '__main__':
   filenames = sorted(glob.glob(os.path.join(args.img_path, '*.png')))
   filenames += sorted(glob.glob(os.path.join(args.img_path, '*.jpg')))
   filenames += sorted(glob.glob(os.path.join(args.img_path, '*.jpeg')))
+
+  logging.info(f'Found {len(filenames)} images in {args.img_path}')
 
   final_results = []
   for filename in tqdm(filenames):

@@ -2,6 +2,9 @@ import os
 import glob
 import argparse
 import shutil
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def divide_frames_to_folders(input_folder, output_folder, n_frames_per_folder):
     if n_frames_per_folder <= 0:
@@ -12,7 +15,11 @@ def divide_frames_to_folders(input_folder, output_folder, n_frames_per_folder):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    frame_files = glob.glob(os.path.join(input_folder, '*.jpg'))
+    frame_files += sorted(glob.glob(os.path.join(input_folder, '*.png')))
+    frame_files = sorted(glob.glob(os.path.join(input_folder, '*.jpg')))
+    frame_files += sorted(glob.glob(os.path.join(input_folder, '*.jpeg')))
+
+    logging.info(f'Found {len(frame_files)} frames in {input_folder}')
 
     for i in range(0, len(frame_files), n_frames_per_folder):
         folder_name = os.path.join(output_folder, f'folder_{i // n_frames_per_folder + 1}')
